@@ -5,6 +5,7 @@
 #include<string.h>
 #include<dirent.h>
 #include<ctype.h>
+#include<assert.h>
 
 #ifndef DEBUG
 #define DEBUG 0
@@ -18,13 +19,23 @@ void paragraph(char* buff, int i) {
   }
 }
 
-void storeWord(char* word, char* buff, int wordStart, int end) {
-  size_t i,j=0;
+void storeWord(char* word, char* buff, int wordStart, int end, int* stored,int* pos) {
+  size_t i;
   for (i = wordStart; i < end; i++) {
-    word[j]=buff[i];
-    j++;
+    word[*pos]=buff[i];
+    (*pos)++;
+  }
+  *stored=1;
+}
+
+void printBuffer(char* buff, int buff_length){
+  size_t i;
+  for (i = 0; i < buff_length; i++) {
+    printf("position: %ld letter: %c\n", i, buff[i]);
   }
 }
+
+
 
 int main(int argc, char const *argv[]) {
 
@@ -34,10 +45,12 @@ int main(int argc, char const *argv[]) {
   }
 
   int file = open("testcase.txt",O_RDONLY);
-  int length = 4;
-  char* buff = malloc(sizeof(char) * length);
-  char* word = malloc(sizeof(char) * length);
-  int bytes_read=0, bytes_written=0, width=atoi(argv[1]), wordStart=0;
+  int buff_length = 4;
+  int word_length = 256;
+  char* buff = malloc(sizeof(char) * buff_length);
+  char* word = calloc(word_length,sizeof(char));
+
+  int bytes_read=0, bytes_written=0, width=atoi(argv[1]), wordStart=0, stored=0,pos=0;
 
 /*
   repetitive:
@@ -77,30 +90,42 @@ int main(int argc, char const *argv[]) {
  store based on word start but need to realloc
 
  [lar ]
- 
+
 
 */
 
 
   size_t i=0;
-  while ((bytes_read = read(file, buff, length)) > 0) {
+  while ((bytes_read = read(file, buff, buff_length)) > 0) {
+    if (DEBUG) printBuffer(buff,buff_length);
   	for (i = 0; i < bytes_read; ++i) {
       if(isspace(buff[i])){
-        //word[length]='\0';
-        bytes_written=write(1,&word[0],strlen(word));
+        if(!stored) bytes_written=write(1,&buff[wordStart],i);
+        else {
+          if(DEBUG) printf("printing what's in store...\n");
+          bytes_written=write(1,&word[0],word_length);
+          bytes_written+=write(1,&buff[wordStart],i);
+          free(word);
+          word = calloc(word_length,sizeof(char));
+          stored=0;
+          pos=0;
+        }
         wordStart=i;
+        continue;
       }
       //bytes_written=write(1,&buff[i],1);
   	}
-    storeWord(word,buff,wordStart,length);
+    if(wordStart!=bytes_read-1) storeWord(word,buff,wordStart,buff_length,&stored,&pos);
+    else if(DEBUG) printf("\nnot storing...\n");
+    wordStart=0;
 
-
-    printf("\nbytes_read: %d\n", bytes_read);
+    if(DEBUG) printf("\nbytes_read: %d\n", bytes_read);
   }
   free(buff);
+  free(word);
   close(file);
-  printf("\nbytes_written: %d\n", bytes_written);
-  printf("width: %d\n", width);
+  if(DEBUG) printf("\nbytes_written: %d\n", bytes_written);
+  if(DEBUG) printf("width: %d\n", width);
 
   return 0;
 }
