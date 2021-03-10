@@ -19,7 +19,7 @@ void paragraph(char* buff, int i) {
   }
 }
 
-void storeWord(char* word, char* buff, int wordStart, int end, int* stored,int* pos) {
+void storeWord(char* word, char* buff, int wordStart, int end, int* stored,int* pos, int bytes_read, int* word_length) {
   size_t i;
   for (i = wordStart; i < end; i++) {
     word[*pos]=buff[i];
@@ -36,7 +36,6 @@ void printBuffer(char* buff, int buff_length){
 }
 
 
-
 int main(int argc, char const *argv[]) {
 
   if (argc>2 || argc==1) {
@@ -46,7 +45,7 @@ int main(int argc, char const *argv[]) {
 
   int file = open("testcase.txt",O_RDONLY);
   int buff_length = 4;
-  int word_length = 256;
+  int word_length = 6;
   char* buff = malloc(sizeof(char) * buff_length);
   char* word = calloc(word_length,sizeof(char));
 
@@ -84,13 +83,13 @@ int main(int argc, char const *argv[]) {
          ^ reset word start, store nothing because length and wordstart are equal
 
  [spec]
- store based on word wordStart
+ just write
 
- spec[tacu]
- store based on word start but need to realloc
+ [tacu]
+ just write
 
  [lar ]
-
+ just write
 
 */
 
@@ -103,7 +102,7 @@ int main(int argc, char const *argv[]) {
         if(!stored) bytes_written=write(1,&buff[wordStart],i);
         else {
           if(DEBUG) printf("printing what's in store...\n");
-          bytes_written=write(1,&word[0],word_length);
+          bytes_written+=write(1,&word[0],word_length);
           bytes_written+=write(1,&buff[wordStart],i);
           free(word);
           word = calloc(word_length,sizeof(char));
@@ -115,8 +114,16 @@ int main(int argc, char const *argv[]) {
       }
       //bytes_written=write(1,&buff[i],1);
   	}
-    if(wordStart!=bytes_read-1) storeWord(word,buff,wordStart,buff_length,&stored,&pos);
-    else if(DEBUG) printf("\nnot storing...\n");
+    if(wordStart!=bytes_read-1 && wordStart!=0) storeWord(word,buff,wordStart,buff_length,&stored,&pos,bytes_read,&word_length);
+    else if(!wordStart) {
+      if(stored) bytes_written+=write(1,&word[0],word_length);
+      bytes_written+=write(1,&buff[wordStart],i);
+      free(word);
+      word = calloc(word_length,sizeof(char));
+      stored=0;
+      pos=0;
+    }
+
     wordStart=0;
 
     if(DEBUG) printf("\nbytes_read: %d\n", bytes_read);
