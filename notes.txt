@@ -1,0 +1,40 @@
+
+
+  repetitive:
+  - store based on word start
+  - reset word start at the end
+  - for every write, word gets emptied out and write gets issued,
+  - not always storing at the end, if length and wordstart are equal then no store
+
+
+ [hell]
+ store based on word start, reached end with no space, reset wordstart
+
+ hell[o wo]
+      ^ write here, issue word start
+          ^ store based on word start, ends with no space, reset word start
+
+ wo[rld!]
+ store based on word start, must realloc for more space, reached end with no space
+
+ world![ my ]
+       ^ write here, issue word start
+          ^ write here, issue word start again
+          ^ reset word start, store nothing because length and wordstart are equal
+
+ [name]
+ store based on word start, reached end with no space, reset wordStart
+
+ name[ is ]
+      ^ write here, issue word start
+         ^ write again, issue word wordStart
+         ^ reset word start, store nothing because length and wordstart are equal
+
+ [spec]
+ just write
+
+ [tacu]
+ just write
+
+ [lar ]
+ just write
