@@ -35,61 +35,72 @@ void printBuffer(char* buff, int buff_length){
   }
 }
 
-int name(/* arguments */) {
+
+void writeStored(int output_fd, int* bytes_written, char* buffer, int start, int end) {
+  if (DEBUG) printf(" width exceeded\n");
+  write(output_fd,"\n",1);
+  bytes_written=0;
+  bytes_written+=write(1,&buffer[++start],--end);
+}
+
+void writeRegular(int output_fd, int* bytes_written, char* buff, int start, int end) {
+  *bytes_written+=write(output_fd,&buff[start],end);
+}
+
+void output(int* bytes_written, char* buff, int start, int end, unsigned width, int output_fd){
+  int length=end-start;
+  if(*bytes_written+length>width) {
+    if (DEBUG) printf(" width exceeded\n");
+    write(output_fd,"\n",1);
+    *bytes_written=0;
+    start++;
+    end--;
+  }
+  *bytes_written+=write(output_fd,&buff[start],end);
+
+}
+
+
+void wrap(unsigned width, int input_fd, int output_fd){
+  size_t i=0;
   int buff_length = 4;
   int word_length = 6;
   char* buff = malloc(sizeof(char) * buff_length);
   char* word = calloc(word_length,sizeof(char));
-
   int bytes_read=0, bytes_written=0, wordStart=0, stored=0, pos=0;
-  unsigned width=atoi(argv[1]);
 
-
-
-
-  size_t i=0;
-  while ((bytes_read = read(file, buff, buff_length)) > 0) {
+  while ((bytes_read = read(input_fd, buff, buff_length)) > 0) {
     if (DEBUG) printBuffer(buff,buff_length);
-    for (i = 0; i < bytes_read; ++i) {
+  	for (i = 0; i < bytes_read; ++i) {
       if(isspace(buff[i])){
-        if(!stored) bytes_written=write(1,&buff[wordStart],i);
+        if(!stored) {
+          if (bytes_written+(i-wordStart)>width) writeStored(output_fd,&bytes_written,buff,wordStart,i);
+          else writeRegular(output_fd,&bytes_written, buff, wordStart, i);
+        }
         else {
           if(DEBUG) printf("printing what's in store...\n");
-          bytes_written+=write(1,&word[0],word_length);
-          bytes_written+=write(1,&buff[wordStart],i);
+          if (bytes_written+(word_length+(i-wordStart))>width) writeStored(output_fd,&bytes_written,word,0,word_length);
+          else writeRegular(output_fd,&bytes_written, word, 0, word_length);
+
+          output(&bytes_written,buff,wordStart,i,width,output_fd);
           free(word);
           word = calloc(word_length,sizeof(char));
-        }
-        wordStart=i;
-        continue;
-      }
-      //bytes_written=write(1,&buff[i],1);
-    }
-    if(wordStart!=bytes_read-1 && wordStart!=0) storeWord(word,buff,wordStart,buff_length,&stored,&pos,bytes_read,&word_length);
-    else if(!wordStart) {
-      if(stored) bytes_written+=write(1,&word[0],word_length);
-      bytes_written+=write(1,&buff[wordStart],i);
-      free(word);
-      word = calloc(word_length,sizeof(char));
-      stored=0;
-      pos=0;
-    }
-
-    wordStart=0;
-
-    if(DEBUG) printf("\nbytes_read: %d\n", bytes_read);
-  }        stored=0;
+          stored=0;
           pos=0;
         }
         wordStart=i;
         continue;
       }
       //bytes_written=write(1,&buff[i],1);
-    }
+  	}
     if(wordStart!=bytes_read-1 && wordStart!=0) storeWord(word,buff,wordStart,buff_length,&stored,&pos,bytes_read,&word_length);
     else if(!wordStart) {
-      if(stored) bytes_written+=write(1,&word[0],word_length);
-      bytes_written+=write(1,&buff[wordStart],i);
+      if(stored) {
+        if(DEBUG) printf("printing what's in store2...\n");
+        if (bytes_written+(word_length+(i-wordStart))>width) writeStored(output_fd,&bytes_written,buff,wordStart,i);
+        else writeRegular(output_fd,&bytes_written, word, 0, word_length);
+      }
+      output(&bytes_written,buff,wordStart,i,width,output_fd);
       free(word);
       word = calloc(word_length,sizeof(char));
       stored=0;
@@ -97,10 +108,15 @@ int name(/* arguments */) {
     }
 
     wordStart=0;
-
+    //if(isspace(buff[buff_length-1])) bytes_written+=write(output_fd," ",1);
     if(DEBUG) printf("\nbytes_read: %d\n", bytes_read);
+    if(DEBUG) printf("bytes_written: %d\n", bytes_written);
   }
+  free(buff);
+  free(word);
 }
+
+
 
 int main(int argc, char const *argv[]) {
 
@@ -109,12 +125,11 @@ int main(int argc, char const *argv[]) {
     return EXIT_SUCCESS;
   }
 
-  int file = open("testcase.txt",O_RDONLY);
+  int fileDsc = open("sample.txt",O_RDONLY);
+  unsigned width=atoi(argv[1]);
+  wrap(width,fileDsc,1);
 
-  free(buff);
-  free(word);
-  close(file);
-  if(DEBUG) printf("\nbytes_written: %d\n", bytes_written);
+  close(fileDsc);
   if(DEBUG) printf("width: %d\n", width);
 
   return 0;
