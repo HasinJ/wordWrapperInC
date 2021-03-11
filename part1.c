@@ -66,24 +66,49 @@ void wrap(unsigned width, int input_fd, int output_fd){
   int word_length = buff_length;
   char* buff = malloc(sizeof(char) * buff_length);
   char* word = calloc(word_length,sizeof(char));
-  int bytes_read=0, bytes_written=0, wordStart=0, stored=0, pos=0;
+  int bytes_read=0, bytes_written=0, wordStart=0, newline=0, stored=0, pos=0;
 
   while ((bytes_read = read(input_fd, buff, buff_length)) > 0) {
     if (DEBUG) printBuffer(buff,buff_length);
 
   	for (i = 0; i < bytes_read; ++i) {
       if(isspace(buff[i])){
+        if(buff[i]==10) {
+          if(!newline){
+            newline=1;
+            wordStart++;
+            continue;
+          }
+        }
 
 
         if(stored){
           if(DEBUG) printf("printing what's in store...\n");
           output(&bytes_written, word, 0, pos, (pos)+(i-wordStart), width, output_fd);
-          output(&bytes_written, buff, wordStart, i+1, 0, width, output_fd);
+          if(buff[i]==10) {
+            if(newline) {
+              if(DEBUG) printf("\nparagraph end!\n");
+              write(output_fd,"\n\n",2);
+              bytes_written=0;
+              wordStart++;
+              free(word);
+              word = calloc(word_length,sizeof(char));
+              stored=0;
+              pos=0;
+              newline=0;
+              continue;
+            }
+          }
+          else output(&bytes_written, buff, wordStart, i+1, 0, width, output_fd);
+
 
           free(word);
           word = calloc(word_length,sizeof(char));
           stored=0;
           pos=0;
+
+
+
         }
 
 
