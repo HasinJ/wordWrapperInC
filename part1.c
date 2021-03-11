@@ -36,7 +36,7 @@ void printBuffer(char* buff, int buff_length){
 }
 
 
-void writeStored(int output_fd, int* bytes_written, char* buffer, int start, int end) {
+void exceeded(int output_fd, int* bytes_written, char* buffer, int start, int end) {
   if (DEBUG) printf(" width exceeded\n");
   write(output_fd,"\n",1);
   bytes_written=0;
@@ -47,8 +47,7 @@ void writeRegular(int output_fd, int* bytes_written, char* buff, int start, int 
   *bytes_written+=write(output_fd,&buff[start],end);
 }
 
-void output(int* bytes_written, char* buff, int start, int end, unsigned width, int output_fd){
-  int length=end-start;
+void output(int* bytes_written, char* buff, int start, int end, int length, unsigned width, int output_fd){
   if(*bytes_written+length>width) {
     if (DEBUG) printf(" width exceeded\n");
     write(output_fd,"\n",1);
@@ -64,56 +63,42 @@ void output(int* bytes_written, char* buff, int start, int end, unsigned width, 
 void wrap(unsigned width, int input_fd, int output_fd){
   size_t i=0;
   int buff_length = 4;
-  int word_length = 6;
   char* buff = malloc(sizeof(char) * buff_length);
-  char* word = calloc(word_length,sizeof(char));
-  int bytes_read=0, bytes_written=0, wordStart=0, stored=0, pos=0;
+  int bytes_read=0, bytes_written=0,wasSpace=0,wordStart=0;
 
   while ((bytes_read = read(input_fd, buff, buff_length)) > 0) {
     if (DEBUG) printBuffer(buff,buff_length);
   	for (i = 0; i < bytes_read; ++i) {
       if(isspace(buff[i])){
-        if(!stored) {
-          if (bytes_written+(i-wordStart)>width) writeStored(output_fd,&bytes_written,buff,wordStart,i);
-          else writeRegular(output_fd,&bytes_written, buff, wordStart, i);
+        if(i<=buff_length-2) paragraph(buff,i);
+        if(!wasSpace) {
+          wasSpace=1; //wasSpace doesnt exists
+          wordStart=i;
+          if (DEBUG) printf("//wasSpace doesnt exists\n");
         }
         else {
-          if(DEBUG) printf("printing what's in store...\n");
-          if (bytes_written+(word_length+(i-wordStart))>width) writeStored(output_fd,&bytes_written,word,0,word_length);
-          else writeRegular(output_fd,&bytes_written, word, 0, word_length);
-
-          output(&bytes_written,buff,wordStart,i,width,output_fd);
-          free(word);
-          word = calloc(word_length,sizeof(char));
-          stored=0;
-          pos=0;
+          if (DEBUG) printf("//wasSpace does exist\n");
+          output(&bytes_written, buff, wordStart, i, i-wordStart, width, output_fd); //bytes_written+=write(output_fd,&buff[wordStart],i); //wasSpace does exist
+          wordStart=i;
         }
-        wordStart=i;
-        continue;
+        if(i==buff_length-1) bytes_written=write(output_fd," ",1);
       }
-      //bytes_written=write(1,&buff[i],1);
   	}
-    if(wordStart!=bytes_read-1 && wordStart!=0) storeWord(word,buff,wordStart,buff_length,&stored,&pos,bytes_read,&word_length);
-    else if(!wordStart) {
-      if(stored) {
-        if(DEBUG) printf("printing what's in store2...\n");
-        if (bytes_written+(word_length+(i-wordStart))>width) writeStored(output_fd,&bytes_written,buff,wordStart,i);
-        else writeRegular(output_fd,&bytes_written, word, 0, word_length);
-      }
-      output(&bytes_written,buff,wordStart,i,width,output_fd);
-      free(word);
-      word = calloc(word_length,sizeof(char));
-      stored=0;
-      pos=0;
+    if (!wasSpace) {
+      if (DEBUG) printf("\n//just write\n");
+      output(&bytes_written, buff, 0, i, i, width, output_fd);
+      //bytes_written+=write(output_fd,&buff[0],i);
     }
-
-    wordStart=0;
+    wasSpace=0;
     //if(isspace(buff[buff_length-1])) bytes_written+=write(output_fd," ",1);
     if(DEBUG) printf("\nbytes_read: %d\n", bytes_read);
     if(DEBUG) printf("bytes_written: %d\n", bytes_written);
+    free(buff);
+    buff = malloc(sizeof(char) * buff_length);
   }
   free(buff);
-  free(word);
+
+  //free(word);
 }
 
 
