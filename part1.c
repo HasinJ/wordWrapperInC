@@ -12,27 +12,6 @@
 #endif
 
 
-void paragraph(char* buff, size_t i, int output_fd, int* bytes_written) {
-  if(buff[i+1]==10 && buff[i]==10) {
-    if (DEBUG) printf("      paragraph end! ASCIIs: %d %d ", buff[i], buff[i+1]);
-    write(output_fd,"\n\n",2);
-    *bytes_written=0;
-  }
-}
-
-int countSpaces(char* buff, int i) {
-  return 1;
-}
-
-void storeWord(char* word, char* buff, int wordStart, int end, int* stored,int* pos, int bytes_read, int* word_length) {
-  size_t i;
-  if(isspace(buff[wordStart])) wordStart++;
-  for (i = wordStart; i < end; i++) {
-    word[*pos]=buff[i];
-    (*pos)++;
-  }
-  *stored=1;
-}
 
 void printBuffer(char* buff, int buff_length){
   size_t i;
@@ -44,18 +23,17 @@ void printBuffer(char* buff, int buff_length){
 
 void writeStored(int* bytes_written, int lastWord, char* buff, int start, int end, int length, unsigned width, int output_fd){
   int fullLength = *bytes_written+length;
-  int newLine=0;
+  if(*bytes_written!=0) fullLength++;
 
   if(fullLength>width) {
     write(output_fd,"\n",1);
     *bytes_written=0;
     if(isspace(buff[start])){
-      if (DEBUG) printf("BOOM bug\n");
+      if (DEBUG) printf("BOOM bug\n"); //no space exists
     }
-    newLine=1;
   }
 
-  if(*bytes_written!=0 && !newLine) *bytes_written+=write(output_fd," ",1);
+  if(*bytes_written!=0) *bytes_written+=write(output_fd," ",1);
   *bytes_written+=write(output_fd,&buff[start],end);
 
 }
