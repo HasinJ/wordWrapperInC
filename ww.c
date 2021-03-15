@@ -144,7 +144,7 @@ int ww(int wid, char *input) {
 			
 			if (isdir(de->d_name)==2 && strncmp(de->d_name,".",1)!=0 && strncmp(de->d_name,wr,1)!=0 ) {
             int file = open(de->d_name, O_RDONLY);
-            char* cur = calloc(strlen(de->d_name)+5,sizeof(char));
+            char* cur = calloc(strlen(de->d_name)+6,sizeof(char));
             strcpy(cur,wr);
 			strcat(cur,de->d_name);
 			
